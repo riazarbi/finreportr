@@ -1,6 +1,8 @@
-#' @import dplyr curl
+#' @import dplyr curl rvest
+#' 
 
-GetFinancial <- function(statement.type, symbol, year) {
+
+GetFinancial <- function(statement.type, symbol, year, verbose  = FALSE) {
      
      ##   This is here to please R CMD check
      description <- NULL
@@ -24,18 +26,38 @@ GetFinancial <- function(statement.type, symbol, year) {
           CIK <- CompanyInfo(symbol)
           CIK <- as.numeric(CIK$CIK)
           
-          report.period <- ReportPeriod(symbol, CIK, accession.no, accession.no.raw)
-          report.period <- gsub("-", "" , report.period)
+          accession.no.root.url <- paste0("https://www.sec.gov/Archives/edgar/data/", CIK, "/", 
+                                          accession.no, "/")
           
-          inst.url <- paste0("https://www.sec.gov/Archives/edgar/data/", CIK, "/", 
-                             accession.no, "/", lower.symbol, "-", report.period, ".xml")
+          accession.header.url <- paste0(accession.no.root.url, 
+                                         accession.no.raw, "-index.html")
+          header.html <- read_html(accession.header.url)
+          accession.documents <- header.html |> 
+               html_elements(".tableFile") |> 
+               html_table() |> 
+               bind_rows()
+          xbrl.instance.filename <- accession.documents |> 
+               filter(grepl("XBRL INSTANCE DOCUMENT",Description)) |> 
+               pull(Document)
+     
+          if(length(xbrl.instance.filename) == 1) {
+               inst.url <- paste0(accession.no.root.url, xbrl.instance.filename)
+               
+          } else {
+               report.period <- ReportPeriod(symbol, CIK, accession.no, accession.no.raw)
+               report.period <- gsub("-", "" , report.period)
+               
+               inst.url <- paste0(accession.no.root.url, lower.symbol, "-", report.period, ".xml")
+               
+          }
+
           return(inst.url)
      }
      
      
      ##   Function to download Instance Document
      GetInstFile <- function(url) {
-          XBRL::xbrlDoAll(url, cache.dir="XBRLcache", prefix.out ="out", verbose=FALSE)
+          XBRL::xbrlDoAll(url, cache.dir="XBRLcache", prefix.out ="out", verbose=verbose)
      }
      
      inst.url <- GetURL(symbol, year)

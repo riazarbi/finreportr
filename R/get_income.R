@@ -13,7 +13,7 @@
 #' }
 
 
-GetIncome <- function(symbol, year) {
+GetIncome <- function(symbol, year, verbose  = FALSE) {
      
      income.descriptions <- c("CONSOLIDATED STATEMENTS OF INCOME", 
                               "CONSOLIDATED STATEMENT OF INCOME", 
@@ -24,5 +24,5 @@ GetIncome <- function(symbol, year) {
                               "INCOME STATEMENTS", 
                               "CONSOLIDATED RESULTS OF OPERATIONS")
      
-     GetFinancial(income.descriptions, symbol, year)
+     GetFinancial(income.descriptions, symbol, year, verbose = verbose)
 }

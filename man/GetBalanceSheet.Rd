@@ -4,7 +4,7 @@
 \alias{GetBalanceSheet}
 \title{Acquire balance sheet.}
 \usage{
-GetBalanceSheet(symbol, year)
+GetBalanceSheet(symbol, year, verbose = FALSE)
 }
 \arguments{
 \item{symbol}{A character vector specifying the stock symbol of the company of interest.}

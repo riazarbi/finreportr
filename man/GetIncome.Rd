@@ -4,7 +4,7 @@
 \alias{GetIncome}
 \title{Acquire income statement.}
 \usage{
-GetIncome(symbol, year)
+GetIncome(symbol, year, verbose = FALSE)
 }
 \arguments{
 \item{symbol}{A character vector specifying the stock symbol of the company of interest.}

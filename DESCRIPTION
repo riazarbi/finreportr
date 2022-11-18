@@ -1,10 +1,10 @@
-Package: finreportr
+Package: secfacts
 Type: Package
-Title: Financial Data from U.S. Securities and Exchange Commission
-Version: 1.0.4
-Date: 2022-01-16
-Author: Seward Lee
-Maintainer: Seward Lee <sewardlee337@gmail.com>
+Title: Parsed Financial Facts from the U.S. Securities and Exchange Commission
+Version: 0.9.0
+Date: 2022-11-18
+Author: Riaz Arbi
+Maintainer: Riaz Arbi <riazarbi@gmail.com>
 Description: Download and display company financial data from the U.S. Securities
     and Exchange Commission's EDGAR database. It contains a suite of functions with
     web scraping and XBRL parsing capabilities that allows users to extract data from EDGAR 
@@ -16,12 +16,13 @@ Imports: xml2,
     httr,
     rvest,
     XBRL,
-    curl
+    arrow
 License: MIT + file LICENSE
 LazyData: true
-URL: https://github.com/sewardlee337/finreportr
-BugReports: https://github.com/sewardlee337/finreportr/issues
+URL: https://github.com/riazarbi/finreportr
+BugReports: https://github.com/riazarbi/finreportr/issues
 RoxygenNote: 7.2.1
+Encoding: UTF-8
 Suggests: knitr,
     rmarkdown,
     testthat

@@ -3,7 +3,9 @@
 #' Extracts and displays basic information relating to a given company in a data frame.
 #' 
 #' @export
-#' @import dplyr
+#' @import dplyr rvest
+#' @importFrom xml2 read_html
+#' @importFrom rvest html_nodes html_text
 #' @param symbol A character vector specifying the stock symbol of the company of interest.
 #' @examples
 #' \dontrun{
@@ -11,7 +13,7 @@
 #' CompanyInfo("TSLA")
 #' }
 
-CompanyInfo <- function(symbol) {
+company_info <- function(symbol) {
      
      options(stringsAsFactors = FALSE)
      
@@ -20,7 +22,7 @@ CompanyInfo <- function(symbol) {
      search.result <- xml2::read_html(url)
      
      ##   Generic function to extract info
-     ExtractInfo <- function(html.node) {
+     extract_info <- function(html.node) {
           info <-
                search.result %>%
                rvest::html_nodes(html.node) %>%
@@ -30,7 +32,7 @@ CompanyInfo <- function(symbol) {
      
      ##   Acquire company name string
      company.name.raw <-
-          ExtractInfo(".companyName") %>%
+          extract_info(".companyName") %>%
           strsplit(" CIK")
      
      ##   Error message for function
@@ -43,19 +45,19 @@ CompanyInfo <- function(symbol) {
      
      ##   Acquire CIK number
      CIK.raw <-
-          ExtractInfo(".companyName a") %>%
+          extract_info(".companyName a") %>%
           strsplit(" ")
      
      CIK <- CIK.raw[[1]][1]
      
      ##   Acquire SIC code
-     SIC <- ExtractInfo(".identInfo acronym+ a")
+     SIC <- extract_info(".identInfo acronym+ a")
      
      ##   Acquire street address
-     street.address <- ExtractInfo(".mailer:nth-child(1) .mailerAddress:nth-child(1)")
+     street.address <- extract_info(".mailer:nth-child(1) .mailerAddress:nth-child(1)")
      
      ##   Acquire city, state, ZIP
-     city.state.raw <- ExtractInfo(".mailer:nth-child(1) .mailerAddress+ .mailerAddress")
+     city.state.raw <- extract_info(".mailer:nth-child(1) .mailerAddress+ .mailerAddress")
      city.state <- sub("\\s+$", "", city.state.raw)
      city.state <- gsub("\n", "", city.state)
      
@@ -67,7 +69,7 @@ CompanyInfo <- function(symbol) {
      
      ##   Acquire fiscal year end
      company.details <-
-          ExtractInfo(".identInfo")
+          extract_info(".identInfo")
      
      fiscal.year.end <-
           gsub("^.*Fiscal Year End: ", "", company.details) %>%

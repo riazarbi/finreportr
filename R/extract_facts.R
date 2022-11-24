@@ -4,6 +4,7 @@
 #' @importFrom rvest html_elements html_table
 #' @importFrom tools file_ext
 #' @importFrom lubridate as_date
+#' @importFrom tidyr separate replace_na
 
 
 extract_facts <- function(CIK, accession.no, statement.types, xbrl_cache = "cache/XBRLcache", verbose  = FALSE) {
@@ -61,67 +62,71 @@ extract_facts <- function(CIK, accession.no, statement.types, xbrl_cache = "cach
      xml_files <- list.files("XBRLcache", pattern = "\\.xml$", full.names = TRUE)
      unlink(xml_files)
      
+     instFile <- purrr::map(instFile, as_tibble)
      # END Procedure 2 #########################################################
      
-     # START Procedure 3: Tidy up loaded XBRL data into data frame #############      
-     ##   Get Role ID from Instance Document
-     role.df <- instFile$role 
+     # START Procedure 3: Tidy up loaded XBRL data into data frame #############
+     # link facts to context for dates and dimensions
+     facts_wide <- left_join(instFile$fact, instFile$context, by = "contextId") 
+     if(nrow(instFile$fact) != nrow(facts_wide)) {
+          stop("joining fact table to context table is adding rows")
+     }
      
-     role.id <- as.character(role.df$roleId)
+     # link facts to units for ISO standards
+     facts_wide_u <- left_join(facts_wide, instFile$unit, by = "unitId")
+     if(nrow(facts_wide) != nrow(facts_wide_u)) {
+          stop("joining fact table to context table is adding rows")
+     }
      
-     ##   Create statement template from Presentation Linkbase
-     statement.skeleton <-
-          instFile$presentation %>%
-          filter(roleId %in% role.id)
+     # separate elementId into taxonomy and concept
+     facts_wide_c <- facts_wide_u |>  
+          tidyr::separate(elementId, into = c("taxonomy", "concept"), sep = "_") |> 
+          # make decimals numeric
+          mutate(decimals = tidyr::replace_na(decimals, "0")) |>
+          mutate(decimals = as.numeric(decimals),
+                 startDate = lubridate::as_date(startDate),
+                 endDate = lubridate::as_date(endDate)) 
      
-     rowid <- c(1:nrow(statement.skeleton))
-     statement.skeleton <- mutate(statement.skeleton, rowid = rowid)
+     # this drops entries that are part of segments or consolidation axes
+     # TODO think about this. mostly we don't want dimensioal stuff. 
+     # but the shares classes are along these dimensions. 
+     facts_wide_t <- facts_wide_c #|> filter(is.na(dimension1))
      
-     # ##   Merge with Label Linkbase
-     # statement <-
-     #      merge(statement.skeleton, instFile$label, by.x = "toElementId", 
-     #            by.y = "elementId") %>%
-     #      filter(labelRole == preferredLabel)
+     # Narrow the columns down and drop duplicates
+     facts_narrow_c <- facts_wide_t |> 
+          select(taxonomy, 
+                 concept, 
+                 unitId, 
+                 fact, 
+                 decimals, 
+                 startDate, 
+                 endDate, 
+                 measure,
+                 dimension1,
+                 value1) |> 
+          distinct()
      
-     ##   Merge with Label Linkbase
-     statement <-
-          merge(statement.skeleton, instFile$label, by.x = "toElementId", 
-                by.y = "elementId") %>%
-          filter(labelRole == "http://www.xbrl.org/2003/role/label")
+     facts_narrow_n <- facts_narrow_c |> 
+          rename(unit = unitId, 
+                 unit_iso = 
+                      `measure`, 
+                 start_date = startDate, 
+                 end_date = endDate) 
      
-     ##   Merge with Fact Linkbase
-     statement <- merge(statement, instFile$fact, by.x = "toElementId", 
-                        by.y = "elementId")
+     facts_narrow <- facts_narrow_n |> 
+          group_by(taxonomy, 
+                   concept, 
+                   unit, 
+                   start_date, 
+                   end_date) |> 
+          filter(decimals == max(decimals)) |>
+          ungroup()
      
-     ##   Merge with Context Linkbase
-     statement <- merge(statement, instFile$context, by.x = "contextId", 
-                        by.y = "contextId") %>%
-          arrange(rowid)
-     
-     ##   Merge with Presentation Linkbase
-     role_descriptions <- instFile$role |> select(roleId, description)
-     statement <- left_join(statement, role_descriptions, by = "roleId") 
-     
-     ## Add CIK and accession.no
-     statement <- statement |> mutate(cik = CIK, accession.no = accession.no)
-          
-     ## Subset combined table
-     statement <- subset(statement, is.na(statement$dimension1))
-     # Clean up
-     clean.statement <- statement |> select(labelString, unitId, fact,
-                               startDate, endDate, rowid, description, cik, accession.no) |>
-          mutate(startDate = lubridate::as_date(startDate),
-                 endDate = lubridate::as_date(endDate))
-
-     clean.statement <- clean.statement |> rename(label = labelString,
-                                                  unit = unitId,
-                                                  section = description) 
-     
-     clean.statement <- clean.statement |> 
-          arrange(rowid) |> 
-          select(-rowid) |>
+     facts <- facts_narrow |> 
+          mutate(cik = CIK,
+                     accession.no = accession.no) |>
           select(cik, accession.no, everything()) |> as_tibble()
      # END Procedure 3 #########################################################
      
-     return(clean.statement)
+     return(facts)
 }

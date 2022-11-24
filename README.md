@@ -11,6 +11,7 @@ That said, the functions work - you might find them useful.
 
 ```r
 # if this doesn't work clone in the repo and use devtools load_all()
+install_github("riazarbi/xbrl") # the cran version is broken
 install_github("riazarbi/finreportr", ref = "riaz-mods")
 library(secfacts)
 options(stringsAsFactors = FALSE)
